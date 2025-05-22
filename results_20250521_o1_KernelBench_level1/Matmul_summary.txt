@@ -1,18 +1,24 @@
 Example: 16_Matmul_with_transposed_A.py, Best runtime: 2.67, First runtime: 3.31
+Example: 3_Batched_matrix_multiplication.py, Best runtime: 1.79, First runtime: 3.49
 Example: 6_Matmul_with_large_K_dimension_.py, Best runtime: 3.85, First runtime: 3.85
 Example: 13_Matmul_for_symmetric_matrices.py, Best runtime: 19.2, First runtime: 25.6
+Example: 11_4D_tensor_matrix_multiplication.py, Best runtime: None, First runtime: -1.0
 Example: 17_Matmul_with_transposed_B.py, Best runtime: 3.15, First runtime: 14.1
 Example: 18_Matmul_with_transposed_both.py, Best runtime: 3.68, First runtime: 3.68
 Example: 12_Matmul_with_diagonal_matrices_.py, Best runtime: 0.228, First runtime: 0.254
 Example: 15_Matmul_for_lower_triangular_matrices.py, Best runtime: 5.98, First runtime: 5.98
 Example: 8_Matmul_with_irregular_shapes_.py, Best runtime: 40.2, First runtime: 54.8
 Example: 14_Matmul_for_upper_triangular_matrices.py, Best runtime: 4.94, First runtime: 4.94
+Example: 1_Square_matrix_multiplication_.py, Best runtime: 2.62, First runtime: 2.62
+Example: 9_Tall_skinny_matrix_multiplication_.py, Best runtime: 2.59, First runtime: 2.82
+Example: 2_Standard_matrix_multiplication_.py, Best runtime: 2.47, First runtime: 3.24
+Example: 10_3D_tensor_matrix_multiplication.py, Best runtime: 7.28, First runtime: 9.67
 
-Examples with only one iteration: 2 (22.2%) out of 9
-Examples compiled in 1st iteration: 9 (100.0%)
-Examples correct in 1st iteration: 9 (100.0%)
+Examples with only one iteration: 3 (20.0%) out of 15
+Examples compiled in 1st iteration: 15 (100.0%)
+Examples correct in 1st iteration: 14 (93.3%)
 Not compiled in 1st but compiled in later iterations: 0 (0.0%)
 Incorrect in 1st but correct in later iterations: 0 (0.0%)
-Examples with speedups: 5 (55.6%)
-   Average speedup: 1.91×
-Average number of iterations per example: 2.22
+Examples with speedups: 9 (60.0%)
+   Average speedup: 1.69×
+Average number of iterations per example: 2.53

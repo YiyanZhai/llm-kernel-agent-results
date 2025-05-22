@@ -5,7 +5,7 @@ Example: 61_conv_transposed_3D__square_input__square_kernel.py, Best runtime: No
 Example: 39_L2Norm_.py, Best runtime: 0.05, First runtime: 0.05
 Example: 16_Matmul_with_transposed_A.py, Best runtime: 2.67, First runtime: 3.31
 Example: 48_Mean_reduction_over_a_dimension.py, Best runtime: 0.0292, First runtime: 0.0292
-Example: 3_Batched_matrix_multiplication.py, Best runtime: 0.844, First runtime: 0.912
+Example: 3_Batched_matrix_multiplication.py, Best runtime: 1.79, First runtime: 3.49
 Example: 69_conv_transposed_2D__asymmetric_input__asymmetric_kernel.py, Best runtime: 0.67, First runtime: 0.937
 Example: 82_conv_depthwise_2D_square_input_square_kernel.py, Best runtime: None, First runtime: -1.0
 Example: 86_conv_depthwise_separable_2D.py, Best runtime: None, First runtime: -1.0
@@ -49,12 +49,16 @@ Example: 12_Matmul_with_diagonal_matrices_.py, Best runtime: 0.228, First runtim
 Example: 15_Matmul_for_lower_triangular_matrices.py, Best runtime: 5.98, First runtime: 5.98
 Example: 8_Matmul_with_irregular_shapes_.py, Best runtime: 40.2, First runtime: 54.8
 Example: 14_Matmul_for_upper_triangular_matrices.py, Best runtime: 4.94, First runtime: 4.94
+Example: 1_Square_matrix_multiplication_.py, Best runtime: 2.62, First runtime: 2.62
+Example: 9_Tall_skinny_matrix_multiplication_.py, Best runtime: 2.59, First runtime: 2.82
+Example: 2_Standard_matrix_multiplication_.py, Best runtime: 2.47, First runtime: 3.24
+Example: 10_3D_tensor_matrix_multiplication.py, Best runtime: 7.28, First runtime: 9.67
 
-Examples with only one iteration: 9 (17.6%) out of 51
-Examples compiled in 1st iteration: 46 (90.2%)
-Examples correct in 1st iteration: 28 (54.9%)
-Not compiled in 1st but compiled in later iterations: 2 (3.9%)
-Incorrect in 1st but correct in later iterations: 10 (19.6%)
-Examples with speedups: 13 (25.5%)
-   Average speedup: 8.54×
-Average number of iterations per example: 3.24
+Examples with only one iteration: 10 (18.2%) out of 55
+Examples compiled in 1st iteration: 50 (90.9%)
+Examples correct in 1st iteration: 32 (58.2%)
+Not compiled in 1st but compiled in later iterations: 2 (3.6%)
+Incorrect in 1st but correct in later iterations: 10 (18.2%)
+Examples with speedups: 16 (29.1%)
+   Average speedup: 7.23×
+Average number of iterations per example: 3.2
