@@ -1,0 +1,60 @@
+Example: 45_Average_Pooling_2D.py, Best runtime: 0.358, First runtime: 0.359
+Example: 23_Softmax.py, Best runtime: 0.0374, First runtime: 2.19
+Example: 73_conv_transposed_3D_asymmetric_input_square_kernel__strided_padded__grouped.py, Best runtime: None, First runtime: -1.0
+Example: 61_conv_transposed_3D__square_input__square_kernel.py, Best runtime: None, First runtime: -1.0
+Example: 39_L2Norm_.py, Best runtime: 0.05, First runtime: 0.05
+Example: 16_Matmul_with_transposed_A.py, Best runtime: 2.67, First runtime: 3.31
+Example: 48_Mean_reduction_over_a_dimension.py, Best runtime: 0.0292, First runtime: 0.0292
+Example: 3_Batched_matrix_multiplication.py, Best runtime: 0.844, First runtime: 0.912
+Example: 69_conv_transposed_2D__asymmetric_input__asymmetric_kernel.py, Best runtime: 0.67, First runtime: 0.937
+Example: 82_conv_depthwise_2D_square_input_square_kernel.py, Best runtime: None, First runtime: -1.0
+Example: 86_conv_depthwise_separable_2D.py, Best runtime: None, First runtime: -1.0
+Example: 6_Matmul_with_large_K_dimension_.py, Best runtime: 3.85, First runtime: 3.85
+Example: 92_cumsum_exclusive.py, Best runtime: 0.143, First runtime: -1.0
+Example: 68_conv_transposed_3D__square_input__asymmetric_kernel.py, Best runtime: None, First runtime: -1.0
+Example: 40_LayerNorm.py, Best runtime: 8.51, First runtime: 308.0
+Example: 37_FrobeniusNorm_.py, Best runtime: 1.26, First runtime: 1.26
+Example: 94_MSELoss.py, Best runtime: 0.0429, First runtime: -1.0
+Example: 97_CosineSimilarityLoss.py, Best runtime: 0.0635, First runtime: -1.0
+Example: 34_InstanceNorm.py, Best runtime: 0.881, First runtime: 0.881
+Example: 44_Average_Pooling_1D.py, Best runtime: 0.0346, First runtime: -1.0
+Example: 46_Average_Pooling_3D.py, Best runtime: 0.729, First runtime: -1.0
+Example: 95_CrossEntropyLoss.py, Best runtime: 0.0356, First runtime: -1.0
+Example: 84_conv_depthwise_2D_asymmetric_input_square_kernel.py, Best runtime: None, First runtime: -1.0
+Example: 36_RMSNorm_.py, Best runtime: 1.07, First runtime: 1.15
+Example: 20_LeakyReLU.py, Best runtime: 0.0322, First runtime: 0.0322
+Example: 47_Sum_reduction_over_a_dimension.py, Best runtime: 0.036, First runtime: 0.036
+Example: 13_Matmul_for_symmetric_matrices.py, Best runtime: 19.2, First runtime: 25.6
+Example: 11_4D_tensor_matrix_multiplication.py, Best runtime: None, First runtime: -1.0
+Example: 58_conv_transposed_3D__asymmetric_input__asymmetric_kernel.py, Best runtime: None, First runtime: -1.0
+Example: 32_HardTanh.py, Best runtime: 0.0244, First runtime: 0.0244
+Example: 41_Max_Pooling_1D.py, Best runtime: 0.0273, First runtime: 0.0273
+Example: 96_HuberLoss.py, Best runtime: 0.0545, First runtime: -1.0
+Example: 51_Argmax_over_a_dimension.py, Best runtime: 0.0345, First runtime: -1.0
+Example: 49_Max_reduction_over_a_dimension.py, Best runtime: 0.0301, First runtime: 0.0358
+Example: 100_HingeLoss.py, Best runtime: 0.047, First runtime: -1.0
+Example: 72_conv_transposed_3D_asymmetric_input_asymmetric_kernel___strided_padded_grouped_.py, Best runtime: None, First runtime: -1.0
+Example: 30_Softsign.py, Best runtime: 0.032, First runtime: 0.032
+Example: 17_Matmul_with_transposed_B.py, Best runtime: 3.15, First runtime: 14.1
+Example: 79_conv_transposed_1D_asymmetric_input_square_kernel___padded____strided____dilated__.py, Best runtime: None, First runtime: -1.0
+Example: 78_conv_transposed_2D_asymmetric_input_asymmetric_kernel___padded__.py, Best runtime: None, First runtime: -1.0
+Example: 71_conv_transposed_2D__asymmetric_input__square_kernel.py, Best runtime: None, First runtime: -1.0
+Example: 35_GroupNorm_.py, Best runtime: 1.36, First runtime: -1.0
+Example: 18_Matmul_with_transposed_both.py, Best runtime: 3.68, First runtime: 3.68
+Example: 55_conv_standard_2D__asymmetric_input__square_kernel.py, Best runtime: 0.838, First runtime: 0.838
+Example: 59_conv_standard_3D__asymmetric_input__square_kernel.py, Best runtime: None, First runtime: -1.0
+Example: 24_LogSoftmax.py, Best runtime: 0.0469, First runtime: 0.0469
+Example: 42_Max_Pooling_2D.py, Best runtime: 0.358, First runtime: 0.359
+Example: 12_Matmul_with_diagonal_matrices_.py, Best runtime: 0.228, First runtime: 0.254
+Example: 15_Matmul_for_lower_triangular_matrices.py, Best runtime: 5.98, First runtime: 5.98
+Example: 8_Matmul_with_irregular_shapes_.py, Best runtime: 40.2, First runtime: 54.8
+Example: 14_Matmul_for_upper_triangular_matrices.py, Best runtime: 4.94, First runtime: 4.94
+
+Examples with only one iteration: 9 (17.6%) out of 51
+Examples compiled in 1st iteration: 46 (90.2%)
+Examples correct in 1st iteration: 28 (54.9%)
+Not compiled in 1st but compiled in later iterations: 2 (3.9%)
+Incorrect in 1st but correct in later iterations: 10 (19.6%)
+Examples with speedups: 13 (25.5%)
+   Average speedup: 8.54×
+Average number of iterations per example: 3.24

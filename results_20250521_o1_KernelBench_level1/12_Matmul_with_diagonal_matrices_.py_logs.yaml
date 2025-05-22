@@ -1,0 +1,719 @@
+original_code: "import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n \
+  \   \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+  \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+  \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n   \
+  \     \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n   \
+  \         A (torch.Tensor): A 1D tensor representing the diagonal of the diagonal\
+  \ matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing the\
+  \ second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor: The\
+  \ result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n        return\
+  \ torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n    A = torch.randn(N)\n\
+  \    B = torch.randn(N, M)\n    return [A, B]\n\ndef get_init_inputs():\n    return\
+  \ []  # No special initialization inputs needed"
+prompts:
+- type: codegen
+  prompt: "You write custom CUDA kernels to replace the pytorch operators in the given\
+    \ architecture to get speedups. \n\n    You have complete freedom to choose the\
+    \ set of operators you want to replace. You may make the decision to replace some\
+    \ operators with custom CUDA kernels and leave others unchanged. You may replace\
+    \ multiple operators with custom implementations, consider operator fusion opportunities\
+    \ (combining multiple operators into a single kernel, for example, combining matmul+relu),\
+    \ or algorithmic changes (such as online softmax). You are only limited by your\
+    \ imagination.\n\n\n        Here's an example to show you the syntax of inline\
+    \ embedding custom CUDA operators in torch: The example given architecture is:\
+    \ \n\n        ``` \n\n        import torch\nimport torch.nn as nn\nimport torch.nn.functional\
+    \ as F\n\n\nclass Model(nn.Module):\n    def __init__(self) -> None:\n       \
+    \ super().__init__()\n\n    def forward(self, a, b):\n        return a + b\n\n\
+    \ndef get_inputs():\n    # randomly generate input tensors based on the model\
+    \ architecture\n    a = torch.randn(1, 128).cuda()\n    b = torch.randn(1, 128).cuda()\n\
+    \    return [a, b]\n\n\ndef get_init_inputs():\n    # randomly generate tensors\
+    \ required for initialization based on the model architecture\n    return []\n\
+    \n        ``` \n\n        The example new arch with custom CUDA kernels looks\
+    \ like this: \n        ```\n        import torch\nimport torch.nn as nn\nimport\
+    \ torch.nn.functional as F\nfrom torch.utils.cpp_extension import load_inline\n\
+    \n# Define the custom CUDA kernel for element-wise addition\nelementwise_add_source\
+    \ = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\n__global__\
+    \ void elementwise_add_kernel(const float* a, const float* b, float* out, int\
+    \ size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n    if (idx <\
+    \ size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor elementwise_add_cuda(torch::Tensor\
+    \ a, torch::Tensor b) {\n    auto size = a.numel();\n    auto out = torch::zeros_like(a);\n\
+    \n    const int block_size = 256;\n    const int num_blocks = (size + block_size\
+    \ - 1) / block_size;\n\n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+    \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\"\
+    \"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+    \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+    \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n  \
+    \  cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+    \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+    \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def __init__(self)\
+    \ -> None:\n        super().__init__()\n        self.elementwise_add = elementwise_add\n\
+    \n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+    \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+    \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+    \    \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+    \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+    \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n \
+    \       \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n\
+    \            A (torch.Tensor): A 1D tensor representing the diagonal of the diagonal\
+    \ matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing\
+    \ the second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor:\
+    \ The result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n  \
+    \      return torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n \
+    \   A = torch.randn(N)\n    B = torch.randn(N, M)\n    return [A, B]\n\ndef get_init_inputs():\n\
+    \    return []  # No special initialization inputs needed\n    ```\n    \nOptimize\
+    \ the architecture named Model with custom CUDA operators! Name your optimized\
+    \ output architecture ModelNew. Output the new code in codeblocks. Please generate\
+    \ real code, NOT pseudocode, make sure the code compiles and is fully functional.\
+    \ Just output the new model code, no other text, and NO testing code! \n\n"
+- type: toolcall
+  prompt: "\n        You are a CUDA kernel testing expert. Analyze the provided kernel\
+    \ code and determine which\n        tools to call to evaluate and test it. Choose\
+    \ appropriate tools to validate correctness,\n        check for optimization opportunities,\
+    \ and benchmark performance. To begin with, you can call evaluate_kernel.\n  \
+    \      "
+- type: loopcontrol
+  prompt: "\n        You are a CUDA kernel evaluation expert. Examine the kernel code\
+    \ and tool outputs to \n        determine if the kernel is optimized and ready\
+    \ for use. \n        \n        You must respond with a JSON object containing\
+    \ exactly two fields:\n        1. is_complete: A boolean (true/false) indicating\
+    \ if the kernel is fully optimized and ready\n        2. reasoning: A brief string\
+    \ explaining your decision\n        \n        Example response:\n        {\"is_complete\"\
+    : true, \"reasoning\": \"The kernel demonstrates good memory access patterns,\
+    \ efficient thread usage, and passed all correctness tests.\"}\n        \n   \
+    \     Or:\n        {\"is_complete\": false, \"reasoning\": \"The kernel needs\
+    \ further optimization for coalesced memory access and has unresolved bank conflicts.\"\
+    }\n        "
+rounds:
+- index: 0
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+      \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+      \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n\
+      \        \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n\
+      \            A (torch.Tensor): A 1D tensor representing the diagonal of the\
+      \ diagonal matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing\
+      \ the second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor:\
+      \ The result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n\
+      \        return torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n\
+      \    A = torch.randn(N)\n    B = torch.randn(N, M)\n    return [A, B]\n\ndef\
+      \ get_init_inputs():\n    return []  # No special initialization inputs needed\n\
+      \    ```\n    \nOptimize the architecture named Model with custom CUDA operators!\
+      \ Name your optimized output architecture ModelNew. Output the new code in codeblocks.\
+      \ Please generate real code, NOT pseudocode, make sure the code compiles and\
+      \ is fully functional. Just output the new model code, no other text, and NO\
+      \ testing code! \n\n"
+  - role: user
+    content: "import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n   \
+      \ \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+      \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+      \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n\
+      \        \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n\
+      \            A (torch.Tensor): A 1D tensor representing the diagonal of the\
+      \ diagonal matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing\
+      \ the second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor:\
+      \ The result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n\
+      \        return torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n\
+      \    A = torch.randn(N)\n    B = torch.randn(N, M)\n    return [A, B]\n\ndef\
+      \ get_init_inputs():\n    return []  # No special initialization inputs needed"
+  model_output: |
+    import torch
+    import torch.nn as nn
+    from torch.utils.cpp_extension import load_inline
+
+    # Custom CUDA kernel for diagonal matrix multiplication: C = diag(A)*B
+    diag_matmul_cuda_source = r"""
+    #include <torch/extension.h>
+    #include <cuda_runtime.h>
+    #include <vector>
+
+    __global__ void diag_matmul_kernel(const float* __restrict__ A,
+                                       const float* __restrict__ B,
+                                       float* __restrict__ C,
+                                       int N, int M) {
+        int row = blockIdx.x * blockDim.x + threadIdx.x;
+        int col = blockIdx.y * blockDim.y + threadIdx.y;
+        if (row < N && col < M) {
+            C[row * M + col] = A[row] * B[row * M + col];
+        }
+    }
+
+    torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B) {
+        // A is 1D (N), B is 2D (N, M)
+        // Output is 2D (N, M)
+
+        TORCH_CHECK(A.dim() == 1, "A must be a 1D tensor");
+        TORCH_CHECK(B.dim() == 2, "B must be a 2D tensor");
+
+        int64_t N = A.size(0);
+        int64_t M = B.size(1);
+
+        auto C = torch::zeros({N, M}, A.options());
+
+        dim3 block(16, 16);
+        dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
+
+        diag_matmul_kernel<<<grid, block>>>(A.data_ptr<float>(),
+                                            B.data_ptr<float>(),
+                                            C.data_ptr<float>(),
+                                            N, M);
+
+        return C;
+    }
+    """
+
+    diag_matmul_cpp_source = r"torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B);"
+
+    # Compile the custom CUDA kernel
+    diag_matmul_extension = load_inline(
+        name="diag_matmul_extension",
+        cpp_sources=diag_matmul_cpp_source,
+        cuda_sources=diag_matmul_cuda_source,
+        functions=["diag_matmul_cuda"],
+        verbose=False,
+    )
+
+    class ModelNew(nn.Module):
+        """
+        Optimized model that performs a matrix multiplication of a diagonal matrix with another matrix.
+        C = diag(A) * B (using custom CUDA operator)
+        """
+        def __init__(self):
+            super(ModelNew, self).__init__()
+            self.diag_matmul = diag_matmul_extension
+
+        def forward(self, A, B):
+            return self.diag_matmul.diag_matmul_cuda(A, B)
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.254, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.254, "std": 0.00167, "min": 0.252, "max": 0.262, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: false
+      reasoning: The kernel can be further optimized by improving memory access patterns.
+        The current implementation accesses A in a non-coalesced manner and uses a
+        suboptimal thread configuration.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null
+- index: 1
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+      \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+      \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n\
+      \        \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n\
+      \            A (torch.Tensor): A 1D tensor representing the diagonal of the\
+      \ diagonal matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing\
+      \ the second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor:\
+      \ The result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n\
+      \        return torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n\
+      \    A = torch.randn(N)\n    B = torch.randn(N, M)\n    return [A, B]\n\ndef\
+      \ get_init_inputs():\n    return []  # No special initialization inputs needed\n\
+      \    ```\n    \nOptimize the architecture named Model with custom CUDA operators!\
+      \ Name your optimized output architecture ModelNew. Output the new code in codeblocks.\
+      \ Please generate real code, NOT pseudocode, make sure the code compiles and\
+      \ is fully functional. Just output the new model code, no other text, and NO\
+      \ testing code! \n\n"
+  - role: user
+    content: "import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n   \
+      \ \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+      \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+      \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n\
+      \        \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n\
+      \            A (torch.Tensor): A 1D tensor representing the diagonal of the\
+      \ diagonal matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing\
+      \ the second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor:\
+      \ The result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n\
+      \        return torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n\
+      \    A = torch.randn(N)\n    B = torch.randn(N, M)\n    return [A, B]\n\ndef\
+      \ get_init_inputs():\n    return []  # No special initialization inputs needed"
+  - role: user
+    content: |-
+      Refine the following CUDA kernel based on these tool outputs:
+
+      Tool 1 output: evaluate_kernel: [TextContent(type='text', text='{"compiled": true, "correctness": true, "runtime": 0.254, "metadata": {"hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats": {"mean": 0.254, "std": 0.00167, "min": 0.252, "max": 0.262, "num_trials": 100, "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}', annotations=None)]
+
+      Current kernel:
+      ```
+      import torch
+      import torch.nn as nn
+      from torch.utils.cpp_extension import load_inline
+
+      # Custom CUDA kernel for diagonal matrix multiplication: C = diag(A)*B
+      diag_matmul_cuda_source = r"""
+      #include <torch/extension.h>
+      #include <cuda_runtime.h>
+      #include <vector>
+
+      __global__ void diag_matmul_kernel(const float* __restrict__ A,
+                                         const float* __restrict__ B,
+                                         float* __restrict__ C,
+                                         int N, int M) {
+          int row = blockIdx.x * blockDim.x + threadIdx.x;
+          int col = blockIdx.y * blockDim.y + threadIdx.y;
+          if (row < N && col < M) {
+              C[row * M + col] = A[row] * B[row * M + col];
+          }
+      }
+
+      torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B) {
+          // A is 1D (N), B is 2D (N, M)
+          // Output is 2D (N, M)
+
+          TORCH_CHECK(A.dim() == 1, "A must be a 1D tensor");
+          TORCH_CHECK(B.dim() == 2, "B must be a 2D tensor");
+
+          int64_t N = A.size(0);
+          int64_t M = B.size(1);
+
+          auto C = torch::zeros({N, M}, A.options());
+
+          dim3 block(16, 16);
+          dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
+
+          diag_matmul_kernel<<<grid, block>>>(A.data_ptr<float>(),
+                                              B.data_ptr<float>(),
+                                              C.data_ptr<float>(),
+                                              N, M);
+
+          return C;
+      }
+      """
+
+      diag_matmul_cpp_source = r"torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B);"
+
+      # Compile the custom CUDA kernel
+      diag_matmul_extension = load_inline(
+          name="diag_matmul_extension",
+          cpp_sources=diag_matmul_cpp_source,
+          cuda_sources=diag_matmul_cuda_source,
+          functions=["diag_matmul_cuda"],
+          verbose=False,
+      )
+
+      class ModelNew(nn.Module):
+          """
+          Optimized model that performs a matrix multiplication of a diagonal matrix with another matrix.
+          C = diag(A) * B (using custom CUDA operator)
+          """
+          def __init__(self):
+              super(ModelNew, self).__init__()
+              self.diag_matmul = diag_matmul_extension
+
+          def forward(self, A, B):
+              return self.diag_matmul.diag_matmul_cuda(A, B)
+
+      ```
+  model_output: |
+    import torch
+    import torch.nn as nn
+    from torch.utils.cpp_extension import load_inline
+
+    # Refined custom CUDA kernel for diagonal matrix multiplication: C = diag(A)*B
+    diag_matmul_cuda_source = r"""
+    #include <torch/extension.h>
+    #include <cuda_runtime.h>
+
+    __global__ void diag_matmul_kernel(const float* __restrict__ A,
+                                       const float* __restrict__ B,
+                                       float* __restrict__ C,
+                                       int N, int M) {
+        // Use 2D grid/block where x -> columns, y -> rows
+        int col = blockIdx.x * blockDim.x + threadIdx.x;
+        int row = blockIdx.y * blockDim.y + threadIdx.y;
+        if (row < N && col < M) {
+            C[row * M + col] = A[row] * B[row * M + col];
+        }
+    }
+
+    torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B) {
+        TORCH_CHECK(A.dim() == 1, "A must be a 1D tensor");
+        TORCH_CHECK(B.dim() == 2, "B must be a 2D tensor");
+
+        int64_t N = A.size(0);
+        int64_t M = B.size(1);
+
+        auto C = torch::zeros({N, M}, A.options());
+
+        const dim3 block(16, 16);
+        const dim3 grid((M + block.x - 1) / block.x,
+                        (N + block.y - 1) / block.y);
+
+        diag_matmul_kernel<<<grid, block>>>(
+            A.data_ptr<float>(),
+            B.data_ptr<float>(),
+            C.data_ptr<float>(),
+            N, M
+        );
+
+        return C;
+    }
+    """
+
+    diag_matmul_cpp_source = r"torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B);"
+
+    # Compile the refined custom CUDA kernel
+    diag_matmul_extension = load_inline(
+        name="diag_matmul_extension",
+        cpp_sources=diag_matmul_cpp_source,
+        cuda_sources=diag_matmul_cuda_source,
+        functions=["diag_matmul_cuda"],
+        verbose=False,
+    )
+
+    class ModelNew(nn.Module):
+        """
+        Optimized model that performs a matrix multiplication of a diagonal matrix with another matrix.
+        C = diag(A) * B (using refined custom CUDA operator)
+        """
+        def __init__(self):
+            super(ModelNew, self).__init__()
+            self.diag_matmul = diag_matmul_extension
+
+        def forward(self, A, B):
+            return self.diag_matmul.diag_matmul_cuda(A, B)
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.228, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.228, "std": 0.00107, "min": 0.226, "max": 0.231, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: false
+      reasoning: The kernel is correct and performant, but the block size may not
+        be optimal for the target hardware. Further evaluation of block dimensions
+        is needed for optimal performance across different batch sizes and hardware.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null
+- index: 2
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+      \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+      \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n\
+      \        \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n\
+      \            A (torch.Tensor): A 1D tensor representing the diagonal of the\
+      \ diagonal matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing\
+      \ the second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor:\
+      \ The result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n\
+      \        return torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n\
+      \    A = torch.randn(N)\n    B = torch.randn(N, M)\n    return [A, B]\n\ndef\
+      \ get_init_inputs():\n    return []  # No special initialization inputs needed\n\
+      \    ```\n    \nOptimize the architecture named Model with custom CUDA operators!\
+      \ Name your optimized output architecture ModelNew. Output the new code in codeblocks.\
+      \ Please generate real code, NOT pseudocode, make sure the code compiles and\
+      \ is fully functional. Just output the new model code, no other text, and NO\
+      \ testing code! \n\n"
+  - role: user
+    content: "import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n   \
+      \ \"\"\"\n    Simple model that performs a matrix multiplication of a diagonal\
+      \ matrix with another matrix.\n    C = diag(A) * B\n    \"\"\"\n    def __init__(self):\n\
+      \        super(Model, self).__init__()\n    \n    def forward(self, A, B):\n\
+      \        \"\"\"\n        Performs the matrix multiplication.\n\n        Args:\n\
+      \            A (torch.Tensor): A 1D tensor representing the diagonal of the\
+      \ diagonal matrix. Shape: (N,).\n            B (torch.Tensor): A 2D tensor representing\
+      \ the second matrix. Shape: (N, M).\n\n        Returns:\n            torch.Tensor:\
+      \ The result of the matrix multiplication. Shape: (N, M).\n        \"\"\"\n\
+      \        return torch.diag(A) @ B\n\nM = 4096\nN = 4096\n\ndef get_inputs():\n\
+      \    A = torch.randn(N)\n    B = torch.randn(N, M)\n    return [A, B]\n\ndef\
+      \ get_init_inputs():\n    return []  # No special initialization inputs needed"
+  - role: user
+    content: |-
+      Refine the following CUDA kernel based on these tool outputs:
+
+      Tool 1 output: evaluate_kernel: [TextContent(type='text', text='{"compiled": true, "correctness": true, "runtime": 0.228, "metadata": {"hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats": {"mean": 0.228, "std": 0.00107, "min": 0.226, "max": 0.231, "num_trials": 100, "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}', annotations=None)]
+
+      Current kernel:
+      ```
+      import torch
+      import torch.nn as nn
+      from torch.utils.cpp_extension import load_inline
+
+      # Refined custom CUDA kernel for diagonal matrix multiplication: C = diag(A)*B
+      diag_matmul_cuda_source = r"""
+      #include <torch/extension.h>
+      #include <cuda_runtime.h>
+
+      __global__ void diag_matmul_kernel(const float* __restrict__ A,
+                                         const float* __restrict__ B,
+                                         float* __restrict__ C,
+                                         int N, int M) {
+          // Use 2D grid/block where x -> columns, y -> rows
+          int col = blockIdx.x * blockDim.x + threadIdx.x;
+          int row = blockIdx.y * blockDim.y + threadIdx.y;
+          if (row < N && col < M) {
+              C[row * M + col] = A[row] * B[row * M + col];
+          }
+      }
+
+      torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B) {
+          TORCH_CHECK(A.dim() == 1, "A must be a 1D tensor");
+          TORCH_CHECK(B.dim() == 2, "B must be a 2D tensor");
+
+          int64_t N = A.size(0);
+          int64_t M = B.size(1);
+
+          auto C = torch::zeros({N, M}, A.options());
+
+          const dim3 block(16, 16);
+          const dim3 grid((M + block.x - 1) / block.x,
+                          (N + block.y - 1) / block.y);
+
+          diag_matmul_kernel<<<grid, block>>>(
+              A.data_ptr<float>(),
+              B.data_ptr<float>(),
+              C.data_ptr<float>(),
+              N, M
+          );
+
+          return C;
+      }
+      """
+
+      diag_matmul_cpp_source = r"torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B);"
+
+      # Compile the refined custom CUDA kernel
+      diag_matmul_extension = load_inline(
+          name="diag_matmul_extension",
+          cpp_sources=diag_matmul_cpp_source,
+          cuda_sources=diag_matmul_cuda_source,
+          functions=["diag_matmul_cuda"],
+          verbose=False,
+      )
+
+      class ModelNew(nn.Module):
+          """
+          Optimized model that performs a matrix multiplication of a diagonal matrix with another matrix.
+          C = diag(A) * B (using refined custom CUDA operator)
+          """
+          def __init__(self):
+              super(ModelNew, self).__init__()
+              self.diag_matmul = diag_matmul_extension
+
+          def forward(self, A, B):
+              return self.diag_matmul.diag_matmul_cuda(A, B)
+
+      ```
+  model_output: |
+    import torch
+    import torch.nn as nn
+    from torch.utils.cpp_extension import load_inline
+
+    # Refined custom CUDA kernel for diagonal matrix multiplication: C = diag(A)*B
+    diag_matmul_cuda_source = r"""
+    #include <torch/extension.h>
+    #include <cuda_runtime.h>
+
+    __global__ void diag_matmul_kernel(const float* __restrict__ A,
+                                       const float* __restrict__ B,
+                                       float* __restrict__ C,
+                                       int N, int M) {
+        // 2D indices
+        int col = blockIdx.x * blockDim.x + threadIdx.x;
+        int row = blockIdx.y * blockDim.y + threadIdx.y;
+
+        // Use shared memory to reduce repeated loads of A
+        __shared__ float sharedA[16];
+
+        // Load A's value in shared memory once per row in this block
+        if (row < N && threadIdx.x == 0) {
+            sharedA[threadIdx.y] = A[row];
+        }
+        __syncthreads();
+
+        if (row < N && col < M) {
+            float a_val = sharedA[threadIdx.y];
+            C[row * M + col] = a_val * B[row * M + col];
+        }
+    }
+
+    torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B) {
+        TORCH_CHECK(A.dim() == 1, "A must be a 1D tensor");
+        TORCH_CHECK(B.dim() == 2, "B must be a 2D tensor");
+
+        int64_t N = A.size(0);
+        int64_t M = B.size(1);
+
+        auto C = torch::zeros({N, M}, A.options());
+
+        const dim3 block(16, 16);
+        const dim3 grid((M + block.x - 1) / block.x,
+                        (N + block.y - 1) / block.y);
+
+        diag_matmul_kernel<<<grid, block>>>(
+            A.data_ptr<float>(),
+            B.data_ptr<float>(),
+            C.data_ptr<float>(),
+            N, M
+        );
+
+        return C;
+    }
+    """
+
+    diag_matmul_cpp_source = r"torch::Tensor diag_matmul_cuda(torch::Tensor A, torch::Tensor B);"
+
+    # Compile the refined custom CUDA kernel
+    diag_matmul_extension = load_inline(
+        name="diag_matmul_extension",
+        cpp_sources=diag_matmul_cpp_source,
+        cuda_sources=diag_matmul_cuda_source,
+        functions=["diag_matmul_cuda"],
+        verbose=False,
+    )
+
+    class ModelNew(nn.Module):
+        """
+        Optimized model that performs a matrix multiplication of a diagonal matrix with another matrix.
+        C = diag(A) * B (using refined custom CUDA operator)
+        """
+        def __init__(self):
+            super(ModelNew, self).__init__()
+            self.diag_matmul = diag_matmul_extension
+
+        def forward(self, A, B):
+            return self.diag_matmul.diag_matmul_cuda(A, B)
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.236, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.236, "std": 0.000932, "min": 0.233, "max": 0.239, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: true
+      reasoning: The kernel efficiently uses shared memory to reduce redundant global
+        memory accesses and passed all correctness tests on high-performance hardware,
+        indicating both functionality and good optimization.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null

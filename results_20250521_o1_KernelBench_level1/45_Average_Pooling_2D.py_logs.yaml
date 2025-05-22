@@ -1,0 +1,1754 @@
+original_code: |-
+  import torch
+  import torch.nn as nn
+
+  class Model(nn.Module):
+      """
+      Simple model that performs 2D Average Pooling.
+      """
+      def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+          """
+          Initializes the Average Pooling layer.
+
+          Args:
+              kernel_size (int): Size of the pooling window.
+              stride (int, optional): Stride of the pooling operation. Defaults to None (same as kernel_size).
+              padding (int, optional): Padding applied to the input tensor. Defaults to 0.
+          """
+          super(Model, self).__init__()
+          self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+
+      def forward(self, x: torch.Tensor) -> torch.Tensor:
+          """
+          Applies 2D Average Pooling to the input tensor.
+
+          Args:
+              x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+
+          Returns:
+              torch.Tensor: Output tensor with Average Pooling applied.
+          """
+          return self.avg_pool(x)
+
+  batch_size = 16
+  channels = 64
+  height = 256
+  width = 256
+  kernel_size = 3
+
+  def get_inputs():
+      x = torch.randn(batch_size, channels, height, width)
+      return [x]
+
+  def get_init_inputs():
+      return [kernel_size]
+prompts:
+- type: codegen
+  prompt: "You write custom CUDA kernels to replace the pytorch operators in the given\
+    \ architecture to get speedups. \n\n    You have complete freedom to choose the\
+    \ set of operators you want to replace. You may make the decision to replace some\
+    \ operators with custom CUDA kernels and leave others unchanged. You may replace\
+    \ multiple operators with custom implementations, consider operator fusion opportunities\
+    \ (combining multiple operators into a single kernel, for example, combining matmul+relu),\
+    \ or algorithmic changes (such as online softmax). You are only limited by your\
+    \ imagination.\n\n\n        Here's an example to show you the syntax of inline\
+    \ embedding custom CUDA operators in torch: The example given architecture is:\
+    \ \n\n        ``` \n\n        import torch\nimport torch.nn as nn\nimport torch.nn.functional\
+    \ as F\n\n\nclass Model(nn.Module):\n    def __init__(self) -> None:\n       \
+    \ super().__init__()\n\n    def forward(self, a, b):\n        return a + b\n\n\
+    \ndef get_inputs():\n    # randomly generate input tensors based on the model\
+    \ architecture\n    a = torch.randn(1, 128).cuda()\n    b = torch.randn(1, 128).cuda()\n\
+    \    return [a, b]\n\n\ndef get_init_inputs():\n    # randomly generate tensors\
+    \ required for initialization based on the model architecture\n    return []\n\
+    \n        ``` \n\n        The example new arch with custom CUDA kernels looks\
+    \ like this: \n        ```\n        import torch\nimport torch.nn as nn\nimport\
+    \ torch.nn.functional as F\nfrom torch.utils.cpp_extension import load_inline\n\
+    \n# Define the custom CUDA kernel for element-wise addition\nelementwise_add_source\
+    \ = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\n__global__\
+    \ void elementwise_add_kernel(const float* a, const float* b, float* out, int\
+    \ size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n    if (idx <\
+    \ size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor elementwise_add_cuda(torch::Tensor\
+    \ a, torch::Tensor b) {\n    auto size = a.numel();\n    auto out = torch::zeros_like(a);\n\
+    \n    const int block_size = 256;\n    const int num_blocks = (size + block_size\
+    \ - 1) / block_size;\n\n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+    \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\"\
+    \"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+    \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+    \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n  \
+    \  cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+    \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+    \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def __init__(self)\
+    \ -> None:\n        super().__init__()\n        self.elementwise_add = elementwise_add\n\
+    \n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+    \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+    \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+    \    \"\"\"\n    Simple model that performs 2D Average Pooling.\n    \"\"\"\n\
+    \    def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):\n\
+    \        \"\"\"\n        Initializes the Average Pooling layer.\n\n        Args:\n\
+    \            kernel_size (int): Size of the pooling window.\n            stride\
+    \ (int, optional): Stride of the pooling operation. Defaults to None (same as\
+    \ kernel_size).\n            padding (int, optional): Padding applied to the input\
+    \ tensor. Defaults to 0.\n        \"\"\"\n        super(Model, self).__init__()\n\
+    \        self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size, stride=stride,\
+    \ padding=padding)\n\n    def forward(self, x: torch.Tensor) -> torch.Tensor:\n\
+    \        \"\"\"\n        Applies 2D Average Pooling to the input tensor.\n\n \
+    \       Args:\n            x (torch.Tensor): Input tensor of shape (batch_size,\
+    \ channels, height, width).\n\n        Returns:\n            torch.Tensor: Output\
+    \ tensor with Average Pooling applied.\n        \"\"\"\n        return self.avg_pool(x)\n\
+    \nbatch_size = 16\nchannels = 64\nheight = 256\nwidth = 256\nkernel_size = 3\n\
+    \ndef get_inputs():\n    x = torch.randn(batch_size, channels, height, width)\n\
+    \    return [x]\n\ndef get_init_inputs():\n    return [kernel_size]\n    ```\n\
+    \    \nOptimize the architecture named Model with custom CUDA operators! Name\
+    \ your optimized output architecture ModelNew. Output the new code in codeblocks.\
+    \ Please generate real code, NOT pseudocode, make sure the code compiles and is\
+    \ fully functional. Just output the new model code, no other text, and NO testing\
+    \ code! \n\n"
+- type: toolcall
+  prompt: "\n        You are a CUDA kernel testing expert. Analyze the provided kernel\
+    \ code and determine which\n        tools to call to evaluate and test it. Choose\
+    \ appropriate tools to validate correctness,\n        check for optimization opportunities,\
+    \ and benchmark performance. To begin with, you can call evaluate_kernel.\n  \
+    \      "
+- type: loopcontrol
+  prompt: "\n        You are a CUDA kernel evaluation expert. Examine the kernel code\
+    \ and tool outputs to \n        determine if the kernel is optimized and ready\
+    \ for use. \n        \n        You must respond with a JSON object containing\
+    \ exactly two fields:\n        1. is_complete: A boolean (true/false) indicating\
+    \ if the kernel is fully optimized and ready\n        2. reasoning: A brief string\
+    \ explaining your decision\n        \n        Example response:\n        {\"is_complete\"\
+    : true, \"reasoning\": \"The kernel demonstrates good memory access patterns,\
+    \ efficient thread usage, and passed all correctness tests.\"}\n        \n   \
+    \     Or:\n        {\"is_complete\": false, \"reasoning\": \"The kernel needs\
+    \ further optimization for coalesced memory access and has unresolved bank conflicts.\"\
+    }\n        "
+rounds:
+- index: 0
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs 2D Average Pooling.\n    \"\"\"\n\
+      \    def __init__(self, kernel_size: int, stride: int = None, padding: int =\
+      \ 0):\n        \"\"\"\n        Initializes the Average Pooling layer.\n\n  \
+      \      Args:\n            kernel_size (int): Size of the pooling window.\n \
+      \           stride (int, optional): Stride of the pooling operation. Defaults\
+      \ to None (same as kernel_size).\n            padding (int, optional): Padding\
+      \ applied to the input tensor. Defaults to 0.\n        \"\"\"\n        super(Model,\
+      \ self).__init__()\n        self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size,\
+      \ stride=stride, padding=padding)\n\n    def forward(self, x: torch.Tensor)\
+      \ -> torch.Tensor:\n        \"\"\"\n        Applies 2D Average Pooling to the\
+      \ input tensor.\n\n        Args:\n            x (torch.Tensor): Input tensor\
+      \ of shape (batch_size, channels, height, width).\n\n        Returns:\n    \
+      \        torch.Tensor: Output tensor with Average Pooling applied.\n       \
+      \ \"\"\"\n        return self.avg_pool(x)\n\nbatch_size = 16\nchannels = 64\n\
+      height = 256\nwidth = 256\nkernel_size = 3\n\ndef get_inputs():\n    x = torch.randn(batch_size,\
+      \ channels, height, width)\n    return [x]\n\ndef get_init_inputs():\n    return\
+      \ [kernel_size]\n    ```\n    \nOptimize the architecture named Model with custom\
+      \ CUDA operators! Name your optimized output architecture ModelNew. Output the\
+      \ new code in codeblocks. Please generate real code, NOT pseudocode, make sure\
+      \ the code compiles and is fully functional. Just output the new model code,\
+      \ no other text, and NO testing code! \n\n"
+  - role: user
+    content: |-
+      import torch
+      import torch.nn as nn
+
+      class Model(nn.Module):
+          """
+          Simple model that performs 2D Average Pooling.
+          """
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              """
+              Initializes the Average Pooling layer.
+
+              Args:
+                  kernel_size (int): Size of the pooling window.
+                  stride (int, optional): Stride of the pooling operation. Defaults to None (same as kernel_size).
+                  padding (int, optional): Padding applied to the input tensor. Defaults to 0.
+              """
+              super(Model, self).__init__()
+              self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              """
+              Applies 2D Average Pooling to the input tensor.
+
+              Args:
+                  x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+
+              Returns:
+                  torch.Tensor: Output tensor with Average Pooling applied.
+              """
+              return self.avg_pool(x)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+  model_output: |
+    import torch
+    import torch.nn as nn
+    from torch.utils.cpp_extension import load_inline
+
+    average_pool2d_source = r"""
+    #include <torch/extension.h>
+    #include <cuda_runtime.h>
+
+    __global__ void average_pool2d_kernel(const float* input,
+                                          float* output,
+                                          int N, int C, int H, int W,
+                                          int outH, int outW,
+                                          int kernel_size, int stride, int padding) {
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        int total = N * C * outH * outW;
+        if (idx < total) {
+            int ow = idx % outW;
+            int oh = (idx / outW) % outH;
+            int c = (idx / (outW * outH)) % C;
+            int n = idx / (outW * outH * C);
+
+            // Calculate the start of the pooling region
+            int in_h_start = oh * stride - padding;
+            int in_w_start = ow * stride - padding;
+
+            float sum_val = 0.0f;
+            // Average pooling with zero padding outside
+            for (int kh = 0; kh < kernel_size; kh++) {
+                for (int kw = 0; kw < kernel_size; kw++) {
+                    int h_in = in_h_start + kh;
+                    int w_in = in_w_start + kw;
+                    float val = 0.0f;
+                    if (h_in >= 0 && h_in < H && w_in >= 0 && w_in < W) {
+                        val = input[((n * C + c) * H + h_in) * W + w_in];
+                    }
+                    sum_val += val;
+                }
+            }
+            // Divide by total kernel area
+            output[idx] = sum_val / float(kernel_size * kernel_size);
+        }
+    }
+
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+        TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+        auto N = input.size(0);
+        auto C = input.size(1);
+        auto H = input.size(2);
+        auto W = input.size(3);
+
+        // Compute output dimensions
+        int outH = (H + 2 * padding - kernel_size) / stride + 1;
+        int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+        auto options = input.options();
+        auto output = torch::zeros({N, C, outH, outW}, options);
+
+        int total = N * C * outH * outW;
+        const int block_size = 256;
+        int grid_size = (total + block_size - 1) / block_size;
+
+        average_pool2d_kernel<<<grid_size, block_size>>>(
+            input.data_ptr<float>(),
+            output.data_ptr<float>(),
+            N, C, H, W, outH, outW,
+            kernel_size, stride, padding
+        );
+
+        return output;
+    }
+    """
+
+    average_pool2d_cpp_source = r"""
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+    """
+
+    average_pool2d = load_inline(
+        name="average_pool2d",
+        cpp_sources=average_pool2d_cpp_source,
+        cuda_sources=average_pool2d_source,
+        functions=["average_pool2d_cuda"],
+        verbose=False
+    )
+
+    class ModelNew(nn.Module):
+        def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+            super().__init__()
+            if stride is None:
+                stride = kernel_size
+            self.kernel_size = kernel_size
+            self.stride = stride
+            self.padding = padding
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+
+    batch_size = 16
+    channels = 64
+    height = 256
+    width = 256
+    kernel_size = 3
+
+    def get_inputs():
+        x = torch.randn(batch_size, channels, height, width)
+        return [x]
+
+    def get_init_inputs():
+        return [kernel_size]
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.359, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.359, "std": 0.000656, "min": 0.357, "max": 0.36, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: false
+      reasoning: The kernel's memory access pattern is suboptimal due to non-coalesced
+        access for pooling. Further optimization is needed for better performance,
+        despite passing correctness and compilation tests.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null
+- index: 1
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs 2D Average Pooling.\n    \"\"\"\n\
+      \    def __init__(self, kernel_size: int, stride: int = None, padding: int =\
+      \ 0):\n        \"\"\"\n        Initializes the Average Pooling layer.\n\n  \
+      \      Args:\n            kernel_size (int): Size of the pooling window.\n \
+      \           stride (int, optional): Stride of the pooling operation. Defaults\
+      \ to None (same as kernel_size).\n            padding (int, optional): Padding\
+      \ applied to the input tensor. Defaults to 0.\n        \"\"\"\n        super(Model,\
+      \ self).__init__()\n        self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size,\
+      \ stride=stride, padding=padding)\n\n    def forward(self, x: torch.Tensor)\
+      \ -> torch.Tensor:\n        \"\"\"\n        Applies 2D Average Pooling to the\
+      \ input tensor.\n\n        Args:\n            x (torch.Tensor): Input tensor\
+      \ of shape (batch_size, channels, height, width).\n\n        Returns:\n    \
+      \        torch.Tensor: Output tensor with Average Pooling applied.\n       \
+      \ \"\"\"\n        return self.avg_pool(x)\n\nbatch_size = 16\nchannels = 64\n\
+      height = 256\nwidth = 256\nkernel_size = 3\n\ndef get_inputs():\n    x = torch.randn(batch_size,\
+      \ channels, height, width)\n    return [x]\n\ndef get_init_inputs():\n    return\
+      \ [kernel_size]\n    ```\n    \nOptimize the architecture named Model with custom\
+      \ CUDA operators! Name your optimized output architecture ModelNew. Output the\
+      \ new code in codeblocks. Please generate real code, NOT pseudocode, make sure\
+      \ the code compiles and is fully functional. Just output the new model code,\
+      \ no other text, and NO testing code! \n\n"
+  - role: user
+    content: |-
+      import torch
+      import torch.nn as nn
+
+      class Model(nn.Module):
+          """
+          Simple model that performs 2D Average Pooling.
+          """
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              """
+              Initializes the Average Pooling layer.
+
+              Args:
+                  kernel_size (int): Size of the pooling window.
+                  stride (int, optional): Stride of the pooling operation. Defaults to None (same as kernel_size).
+                  padding (int, optional): Padding applied to the input tensor. Defaults to 0.
+              """
+              super(Model, self).__init__()
+              self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              """
+              Applies 2D Average Pooling to the input tensor.
+
+              Args:
+                  x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+
+              Returns:
+                  torch.Tensor: Output tensor with Average Pooling applied.
+              """
+              return self.avg_pool(x)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+  - role: user
+    content: |-
+      Refine the following CUDA kernel based on these tool outputs:
+
+      Tool 1 output: evaluate_kernel: [TextContent(type='text', text='{"compiled": true, "correctness": true, "runtime": 0.359, "metadata": {"hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats": {"mean": 0.359, "std": 0.000656, "min": 0.357, "max": 0.36, "num_trials": 100, "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}', annotations=None)]
+
+      Current kernel:
+      ```
+      import torch
+      import torch.nn as nn
+      from torch.utils.cpp_extension import load_inline
+
+      average_pool2d_source = r"""
+      #include <torch/extension.h>
+      #include <cuda_runtime.h>
+
+      __global__ void average_pool2d_kernel(const float* input,
+                                            float* output,
+                                            int N, int C, int H, int W,
+                                            int outH, int outW,
+                                            int kernel_size, int stride, int padding) {
+          int idx = blockIdx.x * blockDim.x + threadIdx.x;
+          int total = N * C * outH * outW;
+          if (idx < total) {
+              int ow = idx % outW;
+              int oh = (idx / outW) % outH;
+              int c = (idx / (outW * outH)) % C;
+              int n = idx / (outW * outH * C);
+
+              // Calculate the start of the pooling region
+              int in_h_start = oh * stride - padding;
+              int in_w_start = ow * stride - padding;
+
+              float sum_val = 0.0f;
+              // Average pooling with zero padding outside
+              for (int kh = 0; kh < kernel_size; kh++) {
+                  for (int kw = 0; kw < kernel_size; kw++) {
+                      int h_in = in_h_start + kh;
+                      int w_in = in_w_start + kw;
+                      float val = 0.0f;
+                      if (h_in >= 0 && h_in < H && w_in >= 0 && w_in < W) {
+                          val = input[((n * C + c) * H + h_in) * W + w_in];
+                      }
+                      sum_val += val;
+                  }
+              }
+              // Divide by total kernel area
+              output[idx] = sum_val / float(kernel_size * kernel_size);
+          }
+      }
+
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+          TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+          auto N = input.size(0);
+          auto C = input.size(1);
+          auto H = input.size(2);
+          auto W = input.size(3);
+
+          // Compute output dimensions
+          int outH = (H + 2 * padding - kernel_size) / stride + 1;
+          int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+          auto options = input.options();
+          auto output = torch::zeros({N, C, outH, outW}, options);
+
+          int total = N * C * outH * outW;
+          const int block_size = 256;
+          int grid_size = (total + block_size - 1) / block_size;
+
+          average_pool2d_kernel<<<grid_size, block_size>>>(
+              input.data_ptr<float>(),
+              output.data_ptr<float>(),
+              N, C, H, W, outH, outW,
+              kernel_size, stride, padding
+          );
+
+          return output;
+      }
+      """
+
+      average_pool2d_cpp_source = r"""
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+      """
+
+      average_pool2d = load_inline(
+          name="average_pool2d",
+          cpp_sources=average_pool2d_cpp_source,
+          cuda_sources=average_pool2d_source,
+          functions=["average_pool2d_cuda"],
+          verbose=False
+      )
+
+      class ModelNew(nn.Module):
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              super().__init__()
+              if stride is None:
+                  stride = kernel_size
+              self.kernel_size = kernel_size
+              self.stride = stride
+              self.padding = padding
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+
+      ```
+  model_output: |
+    import torch
+    import torch.nn as nn
+    from torch.utils.cpp_extension import load_inline
+
+    average_pool2d_source = r"""
+    #include <torch/extension.h>
+    #include <cuda_runtime.h>
+
+    __global__ void average_pool2d_kernel(const float* input,
+                                          float* output,
+                                          int N, int C, int H, int W,
+                                          int outH, int outW,
+                                          int kernel_size, int stride, int padding)
+    {
+        // 2D indexing for output width/height
+        int ow = blockIdx.x * blockDim.x + threadIdx.x;
+        int oh = blockIdx.y * blockDim.y + threadIdx.y;
+        // Combined index for batch and channel
+        int bc = blockIdx.z;
+        if (ow >= outW || oh >= outH || bc >= (N * C)) {
+            return;
+        }
+
+        int n = bc / C;
+        int c = bc % C;
+
+        // Calculate start of pooling region
+        int in_h_start = oh * stride - padding;
+        int in_w_start = ow * stride - padding;
+        float sum_val = 0.0f;
+
+        for (int kh = 0; kh < kernel_size; ++kh) {
+            int h_in = in_h_start + kh;
+            if (h_in < 0 || h_in >= H) {
+                continue;
+            }
+            for (int kw = 0; kw < kernel_size; ++kw) {
+                int w_in = in_w_start + kw;
+                if (w_in >= 0 && w_in < W) {
+                    sum_val += input[((n * C + c) * H + h_in) * W + w_in];
+                }
+            }
+        }
+
+        float invArea = 1.0f / (kernel_size * kernel_size);
+        output[((n * C + c) * outH + oh) * outW + ow] = sum_val * invArea;
+    }
+
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+        TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+        auto N = input.size(0);
+        auto C = input.size(1);
+        auto H = input.size(2);
+        auto W = input.size(3);
+
+        if (stride <= 0) {
+            stride = kernel_size;
+        }
+
+        // Compute output dimensions
+        int outH = (H + 2 * padding - kernel_size) / stride + 1;
+        int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+        auto options = input.options();
+        auto output = torch::zeros({N, C, outH, outW}, options);
+
+        // 3D grid: (outW, outH, N*C)
+        dim3 blockDim(16, 16);
+        dim3 gridDim((outW + blockDim.x - 1) / blockDim.x,
+                     (outH + blockDim.y - 1) / blockDim.y,
+                     N * C);
+
+        average_pool2d_kernel<<<gridDim, blockDim>>>(
+            input.data_ptr<float>(),
+            output.data_ptr<float>(),
+            N, C, H, W,
+            outH, outW,
+            kernel_size, stride, padding
+        );
+
+        return output;
+    }
+    """
+
+    average_pool2d_cpp_source = r"""
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+    """
+
+    average_pool2d = load_inline(
+        name="average_pool2d",
+        cpp_sources=average_pool2d_cpp_source,
+        cuda_sources=average_pool2d_source,
+        functions=["average_pool2d_cuda"],
+        verbose=False
+    )
+
+    class ModelNew(nn.Module):
+        def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+            super().__init__()
+            if stride is None:
+                stride = kernel_size
+            self.kernel_size = kernel_size
+            self.stride = stride
+            self.padding = padding
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+
+    batch_size = 16
+    channels = 64
+    height = 256
+    width = 256
+    kernel_size = 3
+
+    def get_inputs():
+        x = torch.randn(batch_size, channels, height, width)
+        return [x]
+
+    def get_init_inputs():
+        return [kernel_size]
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.359, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.359, "std": 0.000847, "min": 0.357, "max": 0.363, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: false
+      reasoning: The kernel performs correctly and has reasonable runtime on a high-end
+        GPU, but could benefit from shared memory usage and avoiding repeated calculations
+        for better optimization.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null
+- index: 2
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs 2D Average Pooling.\n    \"\"\"\n\
+      \    def __init__(self, kernel_size: int, stride: int = None, padding: int =\
+      \ 0):\n        \"\"\"\n        Initializes the Average Pooling layer.\n\n  \
+      \      Args:\n            kernel_size (int): Size of the pooling window.\n \
+      \           stride (int, optional): Stride of the pooling operation. Defaults\
+      \ to None (same as kernel_size).\n            padding (int, optional): Padding\
+      \ applied to the input tensor. Defaults to 0.\n        \"\"\"\n        super(Model,\
+      \ self).__init__()\n        self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size,\
+      \ stride=stride, padding=padding)\n\n    def forward(self, x: torch.Tensor)\
+      \ -> torch.Tensor:\n        \"\"\"\n        Applies 2D Average Pooling to the\
+      \ input tensor.\n\n        Args:\n            x (torch.Tensor): Input tensor\
+      \ of shape (batch_size, channels, height, width).\n\n        Returns:\n    \
+      \        torch.Tensor: Output tensor with Average Pooling applied.\n       \
+      \ \"\"\"\n        return self.avg_pool(x)\n\nbatch_size = 16\nchannels = 64\n\
+      height = 256\nwidth = 256\nkernel_size = 3\n\ndef get_inputs():\n    x = torch.randn(batch_size,\
+      \ channels, height, width)\n    return [x]\n\ndef get_init_inputs():\n    return\
+      \ [kernel_size]\n    ```\n    \nOptimize the architecture named Model with custom\
+      \ CUDA operators! Name your optimized output architecture ModelNew. Output the\
+      \ new code in codeblocks. Please generate real code, NOT pseudocode, make sure\
+      \ the code compiles and is fully functional. Just output the new model code,\
+      \ no other text, and NO testing code! \n\n"
+  - role: user
+    content: |-
+      import torch
+      import torch.nn as nn
+
+      class Model(nn.Module):
+          """
+          Simple model that performs 2D Average Pooling.
+          """
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              """
+              Initializes the Average Pooling layer.
+
+              Args:
+                  kernel_size (int): Size of the pooling window.
+                  stride (int, optional): Stride of the pooling operation. Defaults to None (same as kernel_size).
+                  padding (int, optional): Padding applied to the input tensor. Defaults to 0.
+              """
+              super(Model, self).__init__()
+              self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              """
+              Applies 2D Average Pooling to the input tensor.
+
+              Args:
+                  x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+
+              Returns:
+                  torch.Tensor: Output tensor with Average Pooling applied.
+              """
+              return self.avg_pool(x)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+  - role: user
+    content: |-
+      Refine the following CUDA kernel based on these tool outputs:
+
+      Tool 1 output: evaluate_kernel: [TextContent(type='text', text='{"compiled": true, "correctness": true, "runtime": 0.359, "metadata": {"hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats": {"mean": 0.359, "std": 0.000847, "min": 0.357, "max": 0.363, "num_trials": 100, "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}', annotations=None)]
+
+      Current kernel:
+      ```
+      import torch
+      import torch.nn as nn
+      from torch.utils.cpp_extension import load_inline
+
+      average_pool2d_source = r"""
+      #include <torch/extension.h>
+      #include <cuda_runtime.h>
+
+      __global__ void average_pool2d_kernel(const float* input,
+                                            float* output,
+                                            int N, int C, int H, int W,
+                                            int outH, int outW,
+                                            int kernel_size, int stride, int padding)
+      {
+          // 2D indexing for output width/height
+          int ow = blockIdx.x * blockDim.x + threadIdx.x;
+          int oh = blockIdx.y * blockDim.y + threadIdx.y;
+          // Combined index for batch and channel
+          int bc = blockIdx.z;
+          if (ow >= outW || oh >= outH || bc >= (N * C)) {
+              return;
+          }
+
+          int n = bc / C;
+          int c = bc % C;
+
+          // Calculate start of pooling region
+          int in_h_start = oh * stride - padding;
+          int in_w_start = ow * stride - padding;
+          float sum_val = 0.0f;
+
+          for (int kh = 0; kh < kernel_size; ++kh) {
+              int h_in = in_h_start + kh;
+              if (h_in < 0 || h_in >= H) {
+                  continue;
+              }
+              for (int kw = 0; kw < kernel_size; ++kw) {
+                  int w_in = in_w_start + kw;
+                  if (w_in >= 0 && w_in < W) {
+                      sum_val += input[((n * C + c) * H + h_in) * W + w_in];
+                  }
+              }
+          }
+
+          float invArea = 1.0f / (kernel_size * kernel_size);
+          output[((n * C + c) * outH + oh) * outW + ow] = sum_val * invArea;
+      }
+
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+          TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+          auto N = input.size(0);
+          auto C = input.size(1);
+          auto H = input.size(2);
+          auto W = input.size(3);
+
+          if (stride <= 0) {
+              stride = kernel_size;
+          }
+
+          // Compute output dimensions
+          int outH = (H + 2 * padding - kernel_size) / stride + 1;
+          int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+          auto options = input.options();
+          auto output = torch::zeros({N, C, outH, outW}, options);
+
+          // 3D grid: (outW, outH, N*C)
+          dim3 blockDim(16, 16);
+          dim3 gridDim((outW + blockDim.x - 1) / blockDim.x,
+                       (outH + blockDim.y - 1) / blockDim.y,
+                       N * C);
+
+          average_pool2d_kernel<<<gridDim, blockDim>>>(
+              input.data_ptr<float>(),
+              output.data_ptr<float>(),
+              N, C, H, W,
+              outH, outW,
+              kernel_size, stride, padding
+          );
+
+          return output;
+      }
+      """
+
+      average_pool2d_cpp_source = r"""
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+      """
+
+      average_pool2d = load_inline(
+          name="average_pool2d",
+          cpp_sources=average_pool2d_cpp_source,
+          cuda_sources=average_pool2d_source,
+          functions=["average_pool2d_cuda"],
+          verbose=False
+      )
+
+      class ModelNew(nn.Module):
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              super().__init__()
+              if stride is None:
+                  stride = kernel_size
+              self.kernel_size = kernel_size
+              self.stride = stride
+              self.padding = padding
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+
+      ```
+  model_output: |
+    import torch
+    import torch.nn as nn
+    from torch.utils.cpp_extension import load_inline
+
+    average_pool2d_source = r"""
+    #include <torch/extension.h>
+    #include <cuda_runtime.h>
+    #include <algorithm>
+
+    __global__ void average_pool2d_kernel(const float* __restrict__ input,
+                                          float* __restrict__ output,
+                                          int N, int C, int H, int W,
+                                          int outH, int outW,
+                                          int kernel_size, int stride, int padding)
+    {
+        // 2D indexing for the output width (ow) and height (oh)
+        int ow = blockIdx.x * blockDim.x + threadIdx.x;
+        int oh = blockIdx.y * blockDim.y + threadIdx.y;
+        // Combined batch-channel index
+        int bc = blockIdx.z;
+        if (ow >= outW || oh >= outH || bc >= N * C) {
+            return;
+        }
+
+        int n = bc / C;
+        int c = bc % C;
+
+        // Compute the start and end indices for the pooling region
+        int in_h_start = oh * stride - padding;
+        int in_w_start = ow * stride - padding;
+        int in_h_end = in_h_start + kernel_size;
+        int in_w_end = in_w_start + kernel_size;
+
+        // Clamp boundaries so we skip extra conditionals in the inner loop
+        int in_h_start_clamped = max(in_h_start, 0);
+        int in_h_end_clamped   = min(in_h_end, H);
+        int in_w_start_clamped = max(in_w_start, 0);
+        int in_w_end_clamped   = min(in_w_end, W);
+
+        float sum_val = 0.0f;
+
+        // Accumulate valid region, then divide by full kernel area (count_include_pad)
+        for (int ih = in_h_start_clamped; ih < in_h_end_clamped; ih++) {
+            int base_idx = ((n * C + c) * H + ih) * W;
+            for (int iw = in_w_start_clamped; iw < in_w_end_clamped; iw++) {
+                sum_val += input[base_idx + iw];
+            }
+        }
+
+        float invArea = 1.0f / (kernel_size * kernel_size);
+        output[((n * C + c) * outH + oh) * outW + ow] = sum_val * invArea;
+    }
+
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+        TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+        auto N = input.size(0);
+        auto C = input.size(1);
+        auto H = input.size(2);
+        auto W = input.size(3);
+
+        if (stride <= 0) {
+            stride = kernel_size;
+        }
+
+        int outH = (H + 2 * padding - kernel_size) / stride + 1;
+        int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+        auto options = input.options();
+        auto output = torch::zeros({N, C, outH, outW}, options);
+
+        dim3 blockDim(16, 16);
+        dim3 gridDim((outW + blockDim.x - 1) / blockDim.x,
+                     (outH + blockDim.y - 1) / blockDim.y,
+                     N * C);
+
+        average_pool2d_kernel<<<gridDim, blockDim>>>(
+            input.data_ptr<float>(),
+            output.data_ptr<float>(),
+            N, C, H, W,
+            outH, outW,
+            kernel_size, stride, padding
+        );
+
+        return output;
+    }
+    """
+
+    average_pool2d_cpp_source = r"""
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+    """
+
+    average_pool2d = load_inline(
+        name="average_pool2d",
+        cpp_sources=average_pool2d_cpp_source,
+        cuda_sources=average_pool2d_source,
+        functions=["average_pool2d_cuda"],
+        verbose=False
+    )
+
+    class ModelNew(nn.Module):
+        def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+            super().__init__()
+            if stride is None:
+                stride = kernel_size
+            self.kernel_size = kernel_size
+            self.stride = stride
+            self.padding = padding
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+
+    batch_size = 16
+    channels = 64
+    height = 256
+    width = 256
+    kernel_size = 3
+
+    def get_inputs():
+        x = torch.randn(batch_size, channels, height, width)
+        return [x]
+
+    def get_init_inputs():
+        return [kernel_size]
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.358, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.358, "std": 0.000709, "min": 0.357, "max": 0.361, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: false
+      reasoning: While the kernel is correct and compiled without issues, further
+        optimization is needed in memory access patterns. The use of 16x16 blocks
+        for pooling operations can lead to low occupancy and non-coalesced memory
+        access in larger images, impacting performance.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null
+- index: 3
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs 2D Average Pooling.\n    \"\"\"\n\
+      \    def __init__(self, kernel_size: int, stride: int = None, padding: int =\
+      \ 0):\n        \"\"\"\n        Initializes the Average Pooling layer.\n\n  \
+      \      Args:\n            kernel_size (int): Size of the pooling window.\n \
+      \           stride (int, optional): Stride of the pooling operation. Defaults\
+      \ to None (same as kernel_size).\n            padding (int, optional): Padding\
+      \ applied to the input tensor. Defaults to 0.\n        \"\"\"\n        super(Model,\
+      \ self).__init__()\n        self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size,\
+      \ stride=stride, padding=padding)\n\n    def forward(self, x: torch.Tensor)\
+      \ -> torch.Tensor:\n        \"\"\"\n        Applies 2D Average Pooling to the\
+      \ input tensor.\n\n        Args:\n            x (torch.Tensor): Input tensor\
+      \ of shape (batch_size, channels, height, width).\n\n        Returns:\n    \
+      \        torch.Tensor: Output tensor with Average Pooling applied.\n       \
+      \ \"\"\"\n        return self.avg_pool(x)\n\nbatch_size = 16\nchannels = 64\n\
+      height = 256\nwidth = 256\nkernel_size = 3\n\ndef get_inputs():\n    x = torch.randn(batch_size,\
+      \ channels, height, width)\n    return [x]\n\ndef get_init_inputs():\n    return\
+      \ [kernel_size]\n    ```\n    \nOptimize the architecture named Model with custom\
+      \ CUDA operators! Name your optimized output architecture ModelNew. Output the\
+      \ new code in codeblocks. Please generate real code, NOT pseudocode, make sure\
+      \ the code compiles and is fully functional. Just output the new model code,\
+      \ no other text, and NO testing code! \n\n"
+  - role: user
+    content: |-
+      import torch
+      import torch.nn as nn
+
+      class Model(nn.Module):
+          """
+          Simple model that performs 2D Average Pooling.
+          """
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              """
+              Initializes the Average Pooling layer.
+
+              Args:
+                  kernel_size (int): Size of the pooling window.
+                  stride (int, optional): Stride of the pooling operation. Defaults to None (same as kernel_size).
+                  padding (int, optional): Padding applied to the input tensor. Defaults to 0.
+              """
+              super(Model, self).__init__()
+              self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              """
+              Applies 2D Average Pooling to the input tensor.
+
+              Args:
+                  x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+
+              Returns:
+                  torch.Tensor: Output tensor with Average Pooling applied.
+              """
+              return self.avg_pool(x)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+  - role: user
+    content: |-
+      Refine the following CUDA kernel based on these tool outputs:
+
+      Tool 1 output: evaluate_kernel: [TextContent(type='text', text='{"compiled": true, "correctness": true, "runtime": 0.358, "metadata": {"hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats": {"mean": 0.358, "std": 0.000709, "min": 0.357, "max": 0.361, "num_trials": 100, "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}', annotations=None)]
+
+      Current kernel:
+      ```
+      import torch
+      import torch.nn as nn
+      from torch.utils.cpp_extension import load_inline
+
+      average_pool2d_source = r"""
+      #include <torch/extension.h>
+      #include <cuda_runtime.h>
+      #include <algorithm>
+
+      __global__ void average_pool2d_kernel(const float* __restrict__ input,
+                                            float* __restrict__ output,
+                                            int N, int C, int H, int W,
+                                            int outH, int outW,
+                                            int kernel_size, int stride, int padding)
+      {
+          // 2D indexing for the output width (ow) and height (oh)
+          int ow = blockIdx.x * blockDim.x + threadIdx.x;
+          int oh = blockIdx.y * blockDim.y + threadIdx.y;
+          // Combined batch-channel index
+          int bc = blockIdx.z;
+          if (ow >= outW || oh >= outH || bc >= N * C) {
+              return;
+          }
+
+          int n = bc / C;
+          int c = bc % C;
+
+          // Compute the start and end indices for the pooling region
+          int in_h_start = oh * stride - padding;
+          int in_w_start = ow * stride - padding;
+          int in_h_end = in_h_start + kernel_size;
+          int in_w_end = in_w_start + kernel_size;
+
+          // Clamp boundaries so we skip extra conditionals in the inner loop
+          int in_h_start_clamped = max(in_h_start, 0);
+          int in_h_end_clamped   = min(in_h_end, H);
+          int in_w_start_clamped = max(in_w_start, 0);
+          int in_w_end_clamped   = min(in_w_end, W);
+
+          float sum_val = 0.0f;
+
+          // Accumulate valid region, then divide by full kernel area (count_include_pad)
+          for (int ih = in_h_start_clamped; ih < in_h_end_clamped; ih++) {
+              int base_idx = ((n * C + c) * H + ih) * W;
+              for (int iw = in_w_start_clamped; iw < in_w_end_clamped; iw++) {
+                  sum_val += input[base_idx + iw];
+              }
+          }
+
+          float invArea = 1.0f / (kernel_size * kernel_size);
+          output[((n * C + c) * outH + oh) * outW + ow] = sum_val * invArea;
+      }
+
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+          TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+          auto N = input.size(0);
+          auto C = input.size(1);
+          auto H = input.size(2);
+          auto W = input.size(3);
+
+          if (stride <= 0) {
+              stride = kernel_size;
+          }
+
+          int outH = (H + 2 * padding - kernel_size) / stride + 1;
+          int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+          auto options = input.options();
+          auto output = torch::zeros({N, C, outH, outW}, options);
+
+          dim3 blockDim(16, 16);
+          dim3 gridDim((outW + blockDim.x - 1) / blockDim.x,
+                       (outH + blockDim.y - 1) / blockDim.y,
+                       N * C);
+
+          average_pool2d_kernel<<<gridDim, blockDim>>>(
+              input.data_ptr<float>(),
+              output.data_ptr<float>(),
+              N, C, H, W,
+              outH, outW,
+              kernel_size, stride, padding
+          );
+
+          return output;
+      }
+      """
+
+      average_pool2d_cpp_source = r"""
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+      """
+
+      average_pool2d = load_inline(
+          name="average_pool2d",
+          cpp_sources=average_pool2d_cpp_source,
+          cuda_sources=average_pool2d_source,
+          functions=["average_pool2d_cuda"],
+          verbose=False
+      )
+
+      class ModelNew(nn.Module):
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              super().__init__()
+              if stride is None:
+                  stride = kernel_size
+              self.kernel_size = kernel_size
+              self.stride = stride
+              self.padding = padding
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+
+      ```
+  model_output: |
+    import torch
+    import torch.nn as nn
+    from torch.utils.cpp_extension import load_inline
+
+    average_pool2d_source = r"""
+    #include <torch/extension.h>
+    #include <cuda_runtime.h>
+    #include <algorithm>
+
+    __global__ void average_pool2d_kernel(const float* __restrict__ input,
+                                          float* __restrict__ output,
+                                          int N, int C, int H, int W,
+                                          int outH, int outW,
+                                          int kernel_size, int stride, int padding)
+    {
+        int ow = blockIdx.x * blockDim.x + threadIdx.x;
+        int oh = blockIdx.y * blockDim.y + threadIdx.y;
+        int bc = blockIdx.z;
+        if (ow >= outW || oh >= outH || bc >= N * C) {
+            return;
+        }
+
+        int n = bc / C;
+        int c = bc % C;
+
+        int in_h_start = oh * stride - padding;
+        int in_w_start = ow * stride - padding;
+        int in_h_end   = in_h_start + kernel_size;
+        int in_w_end   = in_w_start + kernel_size;
+
+        int h_start = max(in_h_start, 0);
+        int h_end   = min(in_h_end, H);
+        int w_start = max(in_w_start, 0);
+        int w_end   = min(in_w_end, W);
+
+        float sum_val = 0.0f;
+        for (int ih = h_start; ih < h_end; ih++) {
+            int base_idx = ((n * C + c) * H + ih) * W;
+            for (int iw = w_start; iw < w_end; iw++) {
+                sum_val += input[base_idx + iw];
+            }
+        }
+
+        float invArea = 1.0f / (kernel_size * kernel_size);
+        int out_index = ((n * C + c) * outH + oh) * outW + ow;
+        output[out_index] = sum_val * invArea;
+    }
+
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+        TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+        int N = input.size(0);
+        int C = input.size(1);
+        int H = input.size(2);
+        int W = input.size(3);
+
+        if (stride <= 0) {
+            stride = kernel_size;
+        }
+
+        int outH = (H + 2 * padding - kernel_size) / stride + 1;
+        int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+        auto options = input.options();
+        auto output = torch::zeros({N, C, outH, outW}, options);
+
+        dim3 blockDim(16, 16);
+        dim3 gridDim((outW + blockDim.x - 1) / blockDim.x,
+                     (outH + blockDim.y - 1) / blockDim.y,
+                     N * C);
+
+        average_pool2d_kernel<<<gridDim, blockDim>>>(
+            input.data_ptr<float>(),
+            output.data_ptr<float>(),
+            N, C, H, W,
+            outH, outW,
+            kernel_size, stride, padding
+        );
+
+        return output;
+    }
+    """
+
+    average_pool2d_cpp_source = r"""
+    torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+    """
+
+    average_pool2d = load_inline(
+        name="average_pool2d",
+        cpp_sources=average_pool2d_cpp_source,
+        cuda_sources=average_pool2d_source,
+        functions=["average_pool2d_cuda"],
+        verbose=False
+    )
+
+    class ModelNew(nn.Module):
+        def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+            super().__init__()
+            if stride is None:
+                stride = kernel_size
+            self.kernel_size = kernel_size
+            self.stride = stride
+            self.padding = padding
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.359, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.359, "std": 0.000732, "min": 0.357, "max": 0.361, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: false
+      reasoning: The kernel shows correct functionality and performance on a high-end
+        GPU, but it might lack optimizations for lower-end GPUs, such as better memory
+        coalescing and dynamic shared memory usage to improve overall efficiency.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null
+- index: 4
+  prompt:
+  - role: system
+    content: "You write custom CUDA kernels to replace the pytorch operators in the\
+      \ given architecture to get speedups. \n\n    You have complete freedom to choose\
+      \ the set of operators you want to replace. You may make the decision to replace\
+      \ some operators with custom CUDA kernels and leave others unchanged. You may\
+      \ replace multiple operators with custom implementations, consider operator\
+      \ fusion opportunities (combining multiple operators into a single kernel, for\
+      \ example, combining matmul+relu), or algorithmic changes (such as online softmax).\
+      \ You are only limited by your imagination.\n\n\n        Here's an example to\
+      \ show you the syntax of inline embedding custom CUDA operators in torch: The\
+      \ example given architecture is: \n\n        ``` \n\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\n\n\nclass Model(nn.Module):\n\
+      \    def __init__(self) -> None:\n        super().__init__()\n\n    def forward(self,\
+      \ a, b):\n        return a + b\n\n\ndef get_inputs():\n    # randomly generate\
+      \ input tensors based on the model architecture\n    a = torch.randn(1, 128).cuda()\n\
+      \    b = torch.randn(1, 128).cuda()\n    return [a, b]\n\n\ndef get_init_inputs():\n\
+      \    # randomly generate tensors required for initialization based on the model\
+      \ architecture\n    return []\n\n        ``` \n\n        The example new arch\
+      \ with custom CUDA kernels looks like this: \n        ```\n        import torch\n\
+      import torch.nn as nn\nimport torch.nn.functional as F\nfrom torch.utils.cpp_extension\
+      \ import load_inline\n\n# Define the custom CUDA kernel for element-wise addition\n\
+      elementwise_add_source = \"\"\"\n#include <torch/extension.h>\n#include <cuda_runtime.h>\n\
+      \n__global__ void elementwise_add_kernel(const float* a, const float* b, float*\
+      \ out, int size) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n \
+      \   if (idx < size) {\n        out[idx] = a[idx] + b[idx];\n    }\n}\n\ntorch::Tensor\
+      \ elementwise_add_cuda(torch::Tensor a, torch::Tensor b) {\n    auto size =\
+      \ a.numel();\n    auto out = torch::zeros_like(a);\n\n    const int block_size\
+      \ = 256;\n    const int num_blocks = (size + block_size - 1) / block_size;\n\
+      \n    elementwise_add_kernel<<<num_blocks, block_size>>>(a.data_ptr<float>(),\
+      \ b.data_ptr<float>(), out.data_ptr<float>(), size);\n\n    return out;\n}\n\
+      \"\"\"\n\nelementwise_add_cpp_source = (\n    \"torch::Tensor elementwise_add_cuda(torch::Tensor\
+      \ a, torch::Tensor b);\"\n)\n\n# Compile the inline CUDA code for element-wise\
+      \ addition\nelementwise_add = load_inline(\n    name=\"elementwise_add\",\n\
+      \    cpp_sources=elementwise_add_cpp_source,\n    cuda_sources=elementwise_add_source,\n\
+      \    functions=[\"elementwise_add_cuda\"],\n    verbose=True,\n    extra_cflags=[\"\
+      \"],\n    extra_ldflags=[\"\"],\n)\n\n\nclass ModelNew(nn.Module):\n    def\
+      \ __init__(self) -> None:\n        super().__init__()\n        self.elementwise_add\
+      \ = elementwise_add\n\n    def forward(self, a, b):\n        return self.elementwise_add.elementwise_add_cuda(a,\
+      \ b)\n\n        ``` \n\n        \n    You are given the following architecture:\
+      \ \n\n    ```\n    import torch\nimport torch.nn as nn\n\nclass Model(nn.Module):\n\
+      \    \"\"\"\n    Simple model that performs 2D Average Pooling.\n    \"\"\"\n\
+      \    def __init__(self, kernel_size: int, stride: int = None, padding: int =\
+      \ 0):\n        \"\"\"\n        Initializes the Average Pooling layer.\n\n  \
+      \      Args:\n            kernel_size (int): Size of the pooling window.\n \
+      \           stride (int, optional): Stride of the pooling operation. Defaults\
+      \ to None (same as kernel_size).\n            padding (int, optional): Padding\
+      \ applied to the input tensor. Defaults to 0.\n        \"\"\"\n        super(Model,\
+      \ self).__init__()\n        self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size,\
+      \ stride=stride, padding=padding)\n\n    def forward(self, x: torch.Tensor)\
+      \ -> torch.Tensor:\n        \"\"\"\n        Applies 2D Average Pooling to the\
+      \ input tensor.\n\n        Args:\n            x (torch.Tensor): Input tensor\
+      \ of shape (batch_size, channels, height, width).\n\n        Returns:\n    \
+      \        torch.Tensor: Output tensor with Average Pooling applied.\n       \
+      \ \"\"\"\n        return self.avg_pool(x)\n\nbatch_size = 16\nchannels = 64\n\
+      height = 256\nwidth = 256\nkernel_size = 3\n\ndef get_inputs():\n    x = torch.randn(batch_size,\
+      \ channels, height, width)\n    return [x]\n\ndef get_init_inputs():\n    return\
+      \ [kernel_size]\n    ```\n    \nOptimize the architecture named Model with custom\
+      \ CUDA operators! Name your optimized output architecture ModelNew. Output the\
+      \ new code in codeblocks. Please generate real code, NOT pseudocode, make sure\
+      \ the code compiles and is fully functional. Just output the new model code,\
+      \ no other text, and NO testing code! \n\n"
+  - role: user
+    content: |-
+      import torch
+      import torch.nn as nn
+
+      class Model(nn.Module):
+          """
+          Simple model that performs 2D Average Pooling.
+          """
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              """
+              Initializes the Average Pooling layer.
+
+              Args:
+                  kernel_size (int): Size of the pooling window.
+                  stride (int, optional): Stride of the pooling operation. Defaults to None (same as kernel_size).
+                  padding (int, optional): Padding applied to the input tensor. Defaults to 0.
+              """
+              super(Model, self).__init__()
+              self.avg_pool = nn.AvgPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              """
+              Applies 2D Average Pooling to the input tensor.
+
+              Args:
+                  x (torch.Tensor): Input tensor of shape (batch_size, channels, height, width).
+
+              Returns:
+                  torch.Tensor: Output tensor with Average Pooling applied.
+              """
+              return self.avg_pool(x)
+
+      batch_size = 16
+      channels = 64
+      height = 256
+      width = 256
+      kernel_size = 3
+
+      def get_inputs():
+          x = torch.randn(batch_size, channels, height, width)
+          return [x]
+
+      def get_init_inputs():
+          return [kernel_size]
+  - role: user
+    content: |-
+      Refine the following CUDA kernel based on these tool outputs:
+
+      Tool 1 output: evaluate_kernel: [TextContent(type='text', text='{"compiled": true, "correctness": true, "runtime": 0.359, "metadata": {"hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats": {"mean": 0.359, "std": 0.000732, "min": 0.357, "max": 0.361, "num_trials": 100, "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}', annotations=None)]
+
+      Current kernel:
+      ```
+      import torch
+      import torch.nn as nn
+      from torch.utils.cpp_extension import load_inline
+
+      average_pool2d_source = r"""
+      #include <torch/extension.h>
+      #include <cuda_runtime.h>
+      #include <algorithm>
+
+      __global__ void average_pool2d_kernel(const float* __restrict__ input,
+                                            float* __restrict__ output,
+                                            int N, int C, int H, int W,
+                                            int outH, int outW,
+                                            int kernel_size, int stride, int padding)
+      {
+          int ow = blockIdx.x * blockDim.x + threadIdx.x;
+          int oh = blockIdx.y * blockDim.y + threadIdx.y;
+          int bc = blockIdx.z;
+          if (ow >= outW || oh >= outH || bc >= N * C) {
+              return;
+          }
+
+          int n = bc / C;
+          int c = bc % C;
+
+          int in_h_start = oh * stride - padding;
+          int in_w_start = ow * stride - padding;
+          int in_h_end   = in_h_start + kernel_size;
+          int in_w_end   = in_w_start + kernel_size;
+
+          int h_start = max(in_h_start, 0);
+          int h_end   = min(in_h_end, H);
+          int w_start = max(in_w_start, 0);
+          int w_end   = min(in_w_end, W);
+
+          float sum_val = 0.0f;
+          for (int ih = h_start; ih < h_end; ih++) {
+              int base_idx = ((n * C + c) * H + ih) * W;
+              for (int iw = w_start; iw < w_end; iw++) {
+                  sum_val += input[base_idx + iw];
+              }
+          }
+
+          float invArea = 1.0f / (kernel_size * kernel_size);
+          int out_index = ((n * C + c) * outH + oh) * outW + ow;
+          output[out_index] = sum_val * invArea;
+      }
+
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding) {
+          TORCH_CHECK(input.dim() == 4, "Input must be a 4D tensor");
+          int N = input.size(0);
+          int C = input.size(1);
+          int H = input.size(2);
+          int W = input.size(3);
+
+          if (stride <= 0) {
+              stride = kernel_size;
+          }
+
+          int outH = (H + 2 * padding - kernel_size) / stride + 1;
+          int outW = (W + 2 * padding - kernel_size) / stride + 1;
+
+          auto options = input.options();
+          auto output = torch::zeros({N, C, outH, outW}, options);
+
+          dim3 blockDim(16, 16);
+          dim3 gridDim((outW + blockDim.x - 1) / blockDim.x,
+                       (outH + blockDim.y - 1) / blockDim.y,
+                       N * C);
+
+          average_pool2d_kernel<<<gridDim, blockDim>>>(
+              input.data_ptr<float>(),
+              output.data_ptr<float>(),
+              N, C, H, W,
+              outH, outW,
+              kernel_size, stride, padding
+          );
+
+          return output;
+      }
+      """
+
+      average_pool2d_cpp_source = r"""
+      torch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int stride, int padding);
+      """
+
+      average_pool2d = load_inline(
+          name="average_pool2d",
+          cpp_sources=average_pool2d_cpp_source,
+          cuda_sources=average_pool2d_source,
+          functions=["average_pool2d_cuda"],
+          verbose=False
+      )
+
+      class ModelNew(nn.Module):
+          def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):
+              super().__init__()
+              if stride is None:
+                  stride = kernel_size
+              self.kernel_size = kernel_size
+              self.stride = stride
+              self.padding = padding
+
+          def forward(self, x: torch.Tensor) -> torch.Tensor:
+              return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride, self.padding)
+
+      ```
+  model_output: "import torch\nimport torch.nn as nn\nfrom torch.utils.cpp_extension\
+    \ import load_inline\n\naverage_pool2d_source = r\"\"\"\n#include <torch/extension.h>\n\
+    #include <cuda_runtime.h>\n#include <algorithm>\n\n__global__ void average_pool2d_kernel(const\
+    \ float* __restrict__ input,\n                                      float* __restrict__\
+    \ output,\n                                      int N, int C, int H, int W,\n\
+    \                                      int outH, int outW,\n                 \
+    \                     int kernel_size, int stride, int padding)\n{\n    int ow\
+    \ = blockIdx.x * blockDim.x + threadIdx.x;\n    int oh = blockIdx.y * blockDim.y\
+    \ + threadIdx.y;\n    int bc = blockIdx.z;\n    if (ow >= outW || oh >= outH ||\
+    \ bc >= N * C) {\n        return;\n    }\n\n    int n = bc / C;\n    int c = bc\
+    \ % C;\n\n    int in_h_start = oh * stride - padding;\n    int in_w_start = ow\
+    \ * stride - padding;\n    int in_h_end   = in_h_start + kernel_size;\n    int\
+    \ in_w_end   = in_w_start + kernel_size;\n\n    int h_start = max(in_h_start,\
+    \ 0);\n    int h_end   = min(in_h_end, H);\n    int w_start = max(in_w_start,\
+    \ 0);\n    int w_end   = min(in_w_end, W);\n\n    float sum_val = 0.0f;\n    for\
+    \ (int ih = h_start; ih < h_end; ih++) {\n        int base_idx = ((n * C + c)\
+    \ * H + ih) * W;\n        for (int iw = w_start; iw < w_end; iw++) {\n       \
+    \     sum_val += input[base_idx + iw];\n        }\n    }\n    \n    // Refined\
+    \ to handle edge regions more precisely if desired:\n    int pool_size = (h_end\
+    \ - h_start) * (w_end - w_start);\n    // To match PyTorch's default AvgPool2d(count_include_pad=True),\
+    \ keep denominator = kernel_size*kernel_size.\n    // If you wish to exclude pad,\
+    \ use pool_size for the denominator:\n    float denominator = float(kernel_size\
+    \ * kernel_size);  // or float(pool_size) for exclude-pad behavior\n\n    int\
+    \ out_index = ((n * C + c) * outH + oh) * outW + ow;\n    output[out_index] =\
+    \ sum_val / denominator;\n}\n\ntorch::Tensor average_pool2d_cuda(torch::Tensor\
+    \ input, int kernel_size, int stride, int padding) {\n    TORCH_CHECK(input.dim()\
+    \ == 4, \"Input must be a 4D tensor\");\n    int N = input.size(0);\n    int C\
+    \ = input.size(1);\n    int H = input.size(2);\n    int W = input.size(3);\n\n\
+    \    if (stride <= 0) {\n        stride = kernel_size;\n    }\n\n    int outH\
+    \ = (H + 2 * padding - kernel_size) / stride + 1;\n    int outW = (W + 2 * padding\
+    \ - kernel_size) / stride + 1;\n\n    auto options = input.options();\n    auto\
+    \ output = torch::zeros({N, C, outH, outW}, options);\n\n    dim3 blockDim(16,\
+    \ 16);\n    dim3 gridDim((outW + blockDim.x - 1) / blockDim.x,\n             \
+    \    (outH + blockDim.y - 1) / blockDim.y,\n                 N * C);\n\n    average_pool2d_kernel<<<gridDim,\
+    \ blockDim>>>(\n        input.data_ptr<float>(),\n        output.data_ptr<float>(),\n\
+    \        N, C, H, W,\n        outH, outW,\n        kernel_size, stride, padding\n\
+    \    );\n\n    return output;\n}\n\"\"\"\n\naverage_pool2d_cpp_source = r\"\"\"\
+    \ntorch::Tensor average_pool2d_cuda(torch::Tensor input, int kernel_size, int\
+    \ stride, int padding);\n\"\"\"\n\naverage_pool2d = load_inline(\n    name=\"\
+    average_pool2d\",\n    cpp_sources=average_pool2d_cpp_source,\n    cuda_sources=average_pool2d_source,\n\
+    \    functions=[\"average_pool2d_cuda\"],\n    verbose=False\n)\n\nclass ModelNew(nn.Module):\n\
+    \    def __init__(self, kernel_size: int, stride: int = None, padding: int = 0):\n\
+    \        super().__init__()\n        if stride is None:\n            stride =\
+    \ kernel_size\n        self.kernel_size = kernel_size\n        self.stride = stride\n\
+    \        self.padding = padding\n\n    def forward(self, x: torch.Tensor) -> torch.Tensor:\n\
+    \        return average_pool2d.average_pool2d_cuda(x, self.kernel_size, self.stride,\
+    \ self.padding)\n"
+  tool_name: evaluate_kernel
+  tool_output: 'evaluate_kernel: [TextContent(type=''text'', text=''{"compiled": true,
+    "correctness": true, "runtime": 0.359, "metadata": {"hardware": "NVIDIA GeForce
+    RTX 4090", "device": "cuda:0", "correctness_trials": "(5 / 5)"}, "runtime_stats":
+    {"mean": 0.359, "std": 0.000667, "min": 0.357, "max": 0.361, "num_trials": 100,
+    "hardware": "NVIDIA GeForce RTX 4090", "device": "cuda:0"}}'', annotations=None)]'
+  analysis: !!python/object:__main__.KernelEvaluation
+    __dict__:
+      is_complete: false
+      reasoning: The kernel could be further optimized for coalesced memory access
+        by reordering the memory access pattern. Although it passes all correctness
+        tests, the current approach accesses each pixel element individually, which
+        is suboptimal for memory transactions.
+    __pydantic_extra__: null
+    __pydantic_fields_set__: !!set
+      is_complete: null
+      reasoning: null
+    __pydantic_private__: null
